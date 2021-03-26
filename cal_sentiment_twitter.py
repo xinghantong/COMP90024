@@ -41,7 +41,7 @@ def generateMelbGrid(argv):
 
 
 
-def readTwitterFile(argv):
+def readTwitterFile(argv,grid,word_dict):
     #load the file in json, but for the large one should read line by line
 
     tweet_text = []
@@ -58,10 +58,54 @@ def readTwitterFile(argv):
             tweet_dict = json.loads(line[:-2])
             tweet_pos.append(tweet_dict['value']['geometry']['coordinates'])
             tweet_text.append(tweet_dict["doc"]["text"])
+        socre_dict = countScore(word_dict,gird,tweet_pos,tweet_text)
+
+def searchInsert(nums, target):
+    left = 0
+    right = len(nums) - 1
+    while left <= right:
+        mid = (right + left) // 2
+        if target == nums[mid]:
+            return mid, True
+        elif target < nums[mid]:
+            right = mid - 1
+        else:
+            left = mid + 1
+    return right
+
+def countScore(word_dict, melbGrid, tweet_pos, tweet_text):
+    x_axis, y_axis, x_name, y_name = melbGrid
+    grid_score = {}
+    punctuation = "! , ? . ’ ”"
+    for i in range(len(tweet_pos)):
+        x = searchInsert(x_axis,tweet_pos[i][0])
+        y = searchInsert(y_axis,tweet_pos[i][1])
+
+        area = y_name[y] + x_name[x]
+        if area not in grid_score:
+            grid_score[area] = 0
+
+        text_line = tweet_text[i]
+        text_line = text_line.strip().split(' ')
+        for text in text_line:
+            text = text.lower()
+            if text[-1] in punctuation:
+                text = text[:-1]
+            if text in word_dict:
+                grid_score[area] += int(word_dict[text])
+
+
+    print(tweet_text)
+    print(grid_score)
 
 
 
-#def countScore(word_dict, melbGrid, tweet_pos, tweet_text):
+
+
+
+
+
+
 '''
 this function is to count the score based the word sentiment, melb grid and tweet text and pos
 '''
@@ -69,6 +113,7 @@ this function is to count the score based the word sentiment, melb grid and twee
 if __name__ == "__main__":
     #enter the line in terminal to run it
     #python cal_sentiment_twitter.py AFINN.txt tinyTwitter.json melbGrid2.json
-    main(sys.argv[1])
-    readTwitterFile(sys.argv[2])
-    generateMelbGrid(sys.argv[3])
+    gird = generateMelbGrid(sys.argv[3])
+    word_dict = main(sys.argv[1])
+    readTwitterFile(sys.argv[2],gird,word_dict)
+
