@@ -44,7 +44,7 @@ def generateMelbGrid(argv):
 
 
 
-def readTwitterFile(argv):
+def readTwitterFile(argv,grid,word_dict):
     #load the file in json, but for the large one should read line by line
 
     tweet_text = []
@@ -54,17 +54,89 @@ def readTwitterFile(argv):
         basic_info = basic_info[:-10]+'}'
         basic_info_json = json.loads(basic_info)
         row = basic_info_json['total_rows']
-        for i in range(row-2):
+        print(row)
 
-            line = tweet_file.readline()
-            # print(line[-2])
-            tweet_dict = json.loads(line[:-2])
-            tweet_pos.append(tweet_dict['value']['geometry']['coordinates'])
-            tweet_text.append(tweet_dict["doc"]["text"])
+        while 1:
+            try:
+                line = tweet_file.readline()
+                tweet_dict = json.loads(line[:-2])
+                tweet_pos.append(tweet_dict['value']['geometry']['coordinates'])
+                tweet_text.append(tweet_dict["doc"]["text"])
+            except:
+                for i in range(len(line)):
+                    try:
+                        tweet_dict = json.loads(line[:len(line)-i])
+                        tweet_pos.append(tweet_dict['value']['geometry']['coordinates'])
+                        tweet_text.append(tweet_dict["doc"]["text"])
+                        break
+                    except:
+                        pass
+                break
+        #print(len(tweet_pos))
 
 
 
-#def countScore(word_dict, melbGrid, tweet_pos, tweet_text):
+        #     tweet_dict = json.loads(line[:-2])
+        #     tweet_pos.append(tweet_dict['value']['geometry']['coordinates'])
+        #     tweet_text.append(tweet_dict["doc"]["text"])
+        # line = tweet_file.readline()
+        # tweet_dict = json.loads(line[:-3])
+        # tweet_pos.append(tweet_dict['value']['geometry']['coordinates'])
+        # tweet_text.append(tweet_dict["doc"]["text"])
+        socre_dict = countScore(word_dict,gird,tweet_pos,tweet_text)
+        # line = tweet_file.readline()
+        # print(line[-3:])
+
+def searchInsert(nums, target):
+    left = 0
+    right = len(nums) - 1
+    while left <= right:
+        mid = (right + left) // 2
+        if target == nums[mid]:
+            return mid, True
+        elif target < nums[mid]:
+            right = mid - 1
+        else:
+            left = mid + 1
+    return right
+
+def countScore(word_dict, melbGrid, tweet_pos, tweet_text):
+    x_axis, y_axis, x_name, y_name = melbGrid
+    grid_score = {}
+    punctuation = "! , ? . ’ ”"
+    for i in range(len(tweet_pos)):
+        x = searchInsert(x_axis,tweet_pos[i][0])
+        y = searchInsert(y_axis,tweet_pos[i][1])
+        #print(x_axis,y_axis,tweet_pos[i])
+        area = y_name[len(y_name)-1-y] + x_name[x]
+        if area not in grid_score:
+            grid_score[area] = 0
+
+        text_line = tweet_text[i]
+        text_line = text_line.strip().split(' ')
+        #print(text_line)
+        score = 0
+        for text in text_line:
+            text = text.lower()
+            if len(text)>0 and text[-1] in punctuation:
+                text = text[:-1]
+            if text in word_dict:
+
+                grid_score[area] += int(word_dict[text])
+                score += int(word_dict[text])
+        #print(i,score)
+
+    #print(tweet_text)
+    print(grid_score)
+
+
+
+
+
+
+
+
+
 '''
 this function is to count the score based the word sentiment, melb grid and tweet text and pos
 '''
@@ -72,6 +144,7 @@ this function is to count the score based the word sentiment, melb grid and twee
 if __name__ == "__main__":
     #enter the line in terminal to run it
     #python cal_sentiment_twitter.py AFINN.txt tinyTwitter.json melbGrid2.json
-    main(sys.argv[1])
-    readTwitterFile(sys.argv[2])
-    generateMelbGrid(sys.argv[3])
+    gird = generateMelbGrid(sys.argv[3])
+    word_dict = main(sys.argv[1])
+    readTwitterFile(sys.argv[2],gird,word_dict)
+
