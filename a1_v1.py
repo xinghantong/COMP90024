@@ -61,13 +61,6 @@ def cal_sentiment(text):
             score += sentiment_dict[token]
     return score
 
-# print a dictionary in certain order.
-def print_dict(pformat, d):
-    for (k,v) in d:
-        print(pformat % (k,v))
-    print(" ")
-
-# sort the result dictionary in reversed order.
 def sort_dict(d):
     return sorted(d.items(), key=lambda x:x[1], reverse=True)
 
