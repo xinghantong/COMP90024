@@ -1,8 +1,6 @@
 import sys
 import json
-import re
 from mpi4py import MPI
-import numpy as np
 import time
 
 
@@ -106,65 +104,6 @@ def readTwitterFile(argv,grid,word_dict):
                     total_score[key] = score[key]
         print(total_score)
         print(time.time()-start_time)
-    # if rank == 0:
-    #
-    #
-    # else:
-    #     print("this is process:",rank)
-    #
-    #     time.sleep(1)
-    #     data = comm.recv(source=0, tag=rank)
-    #     print('Process {} received data:'.format(rank), data)
-    #
-    # ack = {'accpet': 1, 'seq': rank}
-    #
-    #
-    # print('Process {} send back the data to root node'.format(rank))
-    #
-    # data = comm.gather(ack, root=0)
-    # if rank == 0:
-    #     print(data,rank)
-
-
-
-
-
-        # tweet_text = []
-        # tweet_pos = []
-        # with open(argv) as tweet_file:
-        #     basic_info = tweet_file.readline()
-        #     basic_info = basic_info[:-10]+'}'
-        #     basic_info_json = json.loads(basic_info)
-        #     while 1:
-        #         try:
-        #             line = tweet_file.readline()
-        #             tweet_dict = json.loads(line[:-2])
-        #             tweet_pos.append(tweet_dict['value']['geometry']['coordinates'])
-        #             tweet_text.append(tweet_dict["doc"]["text"])
-        #         except:
-        #             for i in range(len(line)):
-        #                 try:
-        #                     tweet_dict = json.loads(line[:len(line)-i])
-        #                     tweet_pos.append(tweet_dict['value']['geometry']['coordinates'])
-        #                     tweet_text.append(tweet_dict["doc"]["text"])
-        #                     break
-        #                 except:
-        #                     pass
-        #             break
-        #print(len(tweet_pos))
-
-
-
-        #     tweet_dict = json.loads(line[:-2])
-        #     tweet_pos.append(tweet_dict['value']['geometry']['coordinates'])
-        #     tweet_text.append(tweet_dict["doc"]["text"])
-        # line = tweet_file.readline()
-        # tweet_dict = json.loads(line[:-3])
-        # tweet_pos.append(tweet_dict['value']['geometry']['coordinates'])
-        # tweet_text.append(tweet_dict["doc"]["text"])
-        #socre_dict = countScore(word_dict,gird,tweet_pos,tweet_text)
-        # line = tweet_file.readline()
-        # print(line[-3:])
 
 def searchInsert(nums, target):
     left = 0
