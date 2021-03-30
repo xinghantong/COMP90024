@@ -7,6 +7,8 @@ import time
 
 start_time = time.time()
 comm = MPI.COMM_WORLD
+size = comm.Get_size()
+rank = comm.Get_rank()
 
 def load_sentiment_dict(dict_path):
     res = {}
@@ -54,9 +56,13 @@ def cal_sentiment(text):
     score = 0
     tokens = re.split('\s',text.lower())
     for token in tokens:
+        token = re.sub(r'([\?\!\.\,\'\"])+$', "", token)
         if token in sentiment_dict:
             score += sentiment_dict[token]
     return score
+
+def sort_dict(d):
+    return sorted(d.items(), key=lambda x:x[1], reverse=True)
 
 GridPath = "melbGrid2.json"
 InstaPath = "smallTwitter.json"
@@ -76,18 +82,38 @@ with open(InstaPath, "r", encoding='utf-8') as f:
     line_num = 0
     for line in f:
         line_num += 1
-        if (line_num % comm.size) == comm.rank:
+        if (line_num % size) == rank:
             grid_id, sentiment = parse_line(line, grids)
             if grid_id:
                 grid_sentiment[grid_id] += sentiment
                 grid_count[grid_id] += 1
 
+
+
+grid_sentiment = comm.gather(grid_sentiment, root=0)
+grid_count = comm.gather(grid_count, root=0)
+
 comm.Barrier()
 
-data = comm.gather(grid_sentiment)
-print("Cell         #Total Tweets       #Overal Sentiment Score")
+if comm.rank == 0:
+    sentiment = {}
+    count = {}
 
-for cell in grids:
-    print(' {0:8} {1:10,} {2:+25,}'.format(cell['id'], grid_count[cell['id']], grid_sentiment[cell['id']]))
+    for p_dict in grid_sentiment:
+        for (k,v) in p_dict.items():
+            if not sentiment.get(k):
+                sentiment[k] = 0
+            sentiment[k] += v
 
-print("Time:",time.time() - start_time,"(sec)")
+    for p_dict in grid_count:
+        for (k,v) in p_dict.items():
+            if not count.get(k):
+                count[k] = 0
+            count[k] += v
+
+    sorted_sentiment = sort_dict(sentiment)
+    print("Cell         #Total Tweets       #Overal Sentiment Score")
+    for cell in sorted_sentiment:
+        print(' {0:8} {1:10,} {2:+25}'.format(cell[0], count[cell[0]], cell[1]))
+
+    print("Used time:",time.time() - start_time,"(s)")
