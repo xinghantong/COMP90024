@@ -2,12 +2,14 @@ import sys
 import json
 import re
 from mpi4py import MPI
+import numpy as np
+import time
 
 
 def main(argv):
     #create a dictionary for matching the word
     word_file = open(str(argv),'r')
-    print(str(argv))
+    #print(str(argv))
     word_dict = {}
     for word_info in word_file:
         #print(word_info)
@@ -47,31 +49,108 @@ def generateMelbGrid(argv):
 def readTwitterFile(argv,grid,word_dict):
     #load the file in json, but for the large one should read line by line
 
-    tweet_text = []
-    tweet_pos = []
+    comm = MPI.COMM_WORLD
+    rank = comm.Get_rank()
+    size = comm.Get_size()
+    start_time = time.time()
     with open(argv) as tweet_file:
         basic_info = tweet_file.readline()
-        basic_info = basic_info[:-10]+'}'
+        basic_info = basic_info[:-10] + '}'
         basic_info_json = json.loads(basic_info)
-        row = basic_info_json['total_rows']
-        print(row)
-
+        grid_score = {}
+        numth = 0
+        for i in range(rank):
+            tweet_file.readline()
+            numth +=1
+            # print("skiphead")
         while 1:
             try:
+                tweet_pos = []
+                tweet_text = []
                 line = tweet_file.readline()
                 tweet_dict = json.loads(line[:-2])
                 tweet_pos.append(tweet_dict['value']['geometry']['coordinates'])
                 tweet_text.append(tweet_dict["doc"]["text"])
+                grid_score = countScore(word_dict, gird, tweet_pos, tweet_text, grid_score)
+                # print(numth,grid_score,"this is process:",rank)
+                numth += 1
+                for i in range(size-1):
+                    try:
+                        tweet_file.readline()
+                        numth += 1
+                    except:
+                        return
+
             except:
                 for i in range(len(line)):
                     try:
-                        tweet_dict = json.loads(line[:len(line)-i])
+                        tweet_dict = json.loads(line[:len(line) - i])
                         tweet_pos.append(tweet_dict['value']['geometry']['coordinates'])
                         tweet_text.append(tweet_dict["doc"]["text"])
+                        grid_score = countScore(word_dict, gird, tweet_pos, tweet_text, grid_score)
+                        numth+=1
                         break
                     except:
                         pass
                 break
+    print(numth, grid_score, "this is process:", rank)
+    grid_score = comm.gather(grid_score, root=0)
+    if rank == 0:
+        print(numth, grid_score, "this is process:", rank)
+        total_score = {}
+        for score in grid_score:
+            for key in score.keys():
+                if key in total_score:
+                    total_score[key] += score[key]
+                else:
+                    total_score[key] = score[key]
+        print(total_score)
+        print(time.time()-start_time)
+    # if rank == 0:
+    #
+    #
+    # else:
+    #     print("this is process:",rank)
+    #
+    #     time.sleep(1)
+    #     data = comm.recv(source=0, tag=rank)
+    #     print('Process {} received data:'.format(rank), data)
+    #
+    # ack = {'accpet': 1, 'seq': rank}
+    #
+    #
+    # print('Process {} send back the data to root node'.format(rank))
+    #
+    # data = comm.gather(ack, root=0)
+    # if rank == 0:
+    #     print(data,rank)
+
+
+
+
+
+        # tweet_text = []
+        # tweet_pos = []
+        # with open(argv) as tweet_file:
+        #     basic_info = tweet_file.readline()
+        #     basic_info = basic_info[:-10]+'}'
+        #     basic_info_json = json.loads(basic_info)
+        #     while 1:
+        #         try:
+        #             line = tweet_file.readline()
+        #             tweet_dict = json.loads(line[:-2])
+        #             tweet_pos.append(tweet_dict['value']['geometry']['coordinates'])
+        #             tweet_text.append(tweet_dict["doc"]["text"])
+        #         except:
+        #             for i in range(len(line)):
+        #                 try:
+        #                     tweet_dict = json.loads(line[:len(line)-i])
+        #                     tweet_pos.append(tweet_dict['value']['geometry']['coordinates'])
+        #                     tweet_text.append(tweet_dict["doc"]["text"])
+        #                     break
+        #                 except:
+        #                     pass
+        #             break
         #print(len(tweet_pos))
 
 
@@ -83,7 +162,7 @@ def readTwitterFile(argv,grid,word_dict):
         # tweet_dict = json.loads(line[:-3])
         # tweet_pos.append(tweet_dict['value']['geometry']['coordinates'])
         # tweet_text.append(tweet_dict["doc"]["text"])
-        socre_dict = countScore(word_dict,gird,tweet_pos,tweet_text)
+        #socre_dict = countScore(word_dict,gird,tweet_pos,tweet_text)
         # line = tweet_file.readline()
         # print(line[-3:])
 
@@ -100,10 +179,10 @@ def searchInsert(nums, target):
             left = mid + 1
     return right
 
-def countScore(word_dict, melbGrid, tweet_pos, tweet_text):
+def countScore(word_dict, melbGrid, tweet_pos, tweet_text,grid_score):
     x_axis, y_axis, x_name, y_name = melbGrid
-    grid_score = {}
-    punctuation = "! , ? . ’ ”"
+    #print(tweet_pos)
+    punctuation = [",", ".", "\'", "\"", "?", "!"]
     for i in range(len(tweet_pos)):
         x = searchInsert(x_axis,tweet_pos[i][0])
         y = searchInsert(y_axis,tweet_pos[i][1])
@@ -127,7 +206,7 @@ def countScore(word_dict, melbGrid, tweet_pos, tweet_text):
         #print(i,score)
 
     #print(tweet_text)
-    print(grid_score)
+    return grid_score
 
 
 
