@@ -137,12 +137,15 @@ def findIndex(nums,target):
 def countScore(word_dict, melbGrid, tweet_pos, tweet_text,grid_score,grid_count):
     x_axis, y_axis, x_name, y_name = melbGrid
     #print(tweet_pos)
+    invalid_area = ['A5','B5','D1','D2']
     punctuation = [",", ".", "\'", "\"", "?", "!"]
     if tweet_pos[0]>= x_axis[0] and tweet_pos[0] <= x_axis[-1] and tweet_pos[1]>= y_axis[0] and tweet_pos[1] <= y_axis[-1]:
         x = findIndex(x_axis, tweet_pos[0])
         y = findIndex(y_axis, tweet_pos[1])
         area = y_name[y] + x_name[x]
         #print(area, y, x, tweet_pos)
+        if area in invalid_area:
+            return
         if area not in grid_count:
             grid_count[area] = 1
         else:
