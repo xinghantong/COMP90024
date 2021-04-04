@@ -20,7 +20,7 @@ def load_sentiment_dict(dict_path):
 
 def load_melb_grid(grid_path):
     res = []
-    with open(grid_path,"r") as f:
+    with open(grid_path,"r", , encoding='utf-8') as f:
         data = json.load(f)
         for x in data['features']:
             if 'properties' in x:
@@ -61,8 +61,8 @@ def cal_sentiment(text):
             score += sentiment_dict[token]
     return score
 
-def sort_dict(d):
-    return sorted(d.items(), key=lambda x:x[1], reverse=True)
+# def sort_dict(d):
+#     return 
 
 GridPath = "melbGrid2.json"
 InstaPath = "smallTwitter.json"
@@ -111,9 +111,10 @@ if comm.rank == 0:
                 count[k] = 0
             count[k] += v
 
-    sorted_sentiment = sort_dict(sentiment)
+    sorted_sentiment = sorted(sentiment.items(), key=lambda x:x[1], reverse=True)
     print("Cell         #Total Tweets       #Overal Sentiment Score")
     for cell in sorted_sentiment:
         print(' {0:8} {1:10,} {2:+25}'.format(cell[0], count[cell[0]], cell[1]))
 
+    print("{0:8s} {1:<8d} {2:<8d}".format("total",sum(count.values()),sum(sentiment.values())))
     print("Used time:",time.time() - start_time,"(s)")
