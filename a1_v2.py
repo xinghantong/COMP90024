@@ -37,12 +37,10 @@ def generateMelbGrid(argv):
             y_axis.append(f["properties"]["ymax"])
     x_axis.sort()
     y_axis.sort()
+    x_axis[0] -= 1e-8
+    y_axis[0] -= 1e-8
 
     return [x_axis,y_axis,x_name,y_name]
-
-
-
-
 
 
 def readTwitterFile(argv,grid,word_dict):
@@ -54,6 +52,7 @@ def readTwitterFile(argv,grid,word_dict):
     start_time = time.time()
     grid_score = {}
     grid_count = {}
+
     x_axis, y_axis, x_name, y_name = grid
     for x in x_name:
         for y in y_name:
@@ -68,60 +67,33 @@ def readTwitterFile(argv,grid,word_dict):
         basic_info = tweet_file.readline()
         basic_info = basic_info[:-10] + '}'
         basic_info_json = json.loads(basic_info)
-
+        
         for i in range(rank):
-            # tweet_file.readline()
             next(tweet_file)
-            #numth +=1
-            # print("skiphead")
         while 1:
             try:
                 line = tweet_file.readline()
-
-                # tweet_dict = json.loads(line[:-2])
-                # tweet_pos = tweet_dict['value']['geometry']['coordinates']
-                # tweet_text = tweet_dict['value']['properties']["text"]
                 m = re.search('"coordinates":\[([\d.-]+),([\d.-]+)\]', line)                
                 tweet_pos = [float(m.group(1)),float(m.group(2))]
                 s = re.search('"text":"([\s\S]*?)"', line)
                 tweet_text = s.group(1)
                 countScore(word_dict, gird, tweet_pos, tweet_text, grid_score,grid_count)
-                # numth += 1
+                
                 for i in range(size-1):
                     try:
-                        # tweet_file.readline()
                         next(tweet_file)
-                        # numth += 1
                     except:
-                        # print(numth)
                         pass
 
             except:
                 break
 
-
-                # for i in range(len(line)):
-                #     try:
-                #         # tweet_dict = json.loads(line[:len(line) - i])
-                #         # tweet_pos.append(tweet_dict['value']['geometry']['coordinates'])
-                #         # tweet_text.append(tweet_dict['value']['properties']["text"])
-                #         m = re.search('"coordinates":\[([\d.-]+),([\d.-]+)\]', line)                
-                #         tweet_pos = [float(m.group(1)),float(m.group(2))]
-                #         s = re.search('"text":"([\s\S]*?)"', line)
-                #         tweet_text = s.group(1)
-                #         countScore(word_dict, gird, tweet_pos, tweet_text, grid_score,grid_count)
-                #         grid_score = countScore(word_dict, gird, tweet_pos, tweet_text, grid_score)
-                #         # numth+=1
-                #         break
-                #     except:
-                #         pass
-
-                
-    #print(numth, grid_score, "this is process:", rank)
+    print(test[rank])            
+    print(numth,"Process:", rank)
     grid_score = comm.gather(grid_score, root=0)
     grid_count = comm.gather(grid_count,root=0)
+
     if rank == 0:
-        #print(numth, grid_score, "this is process:", rank)
         total_score = {}
         for score in grid_score:
             for key in score.keys():
@@ -139,21 +111,17 @@ def readTwitterFile(argv,grid,word_dict):
                     total_count[key] = count[key]
 
         sort_score = sorted(total_score.items(), key=lambda x: x[1], reverse=True)
-        print((sort_score))
         print("{0:8s} {1:<8s} {2:<8s}".format("Cell","#Tweets","#Sentiment Score"))
         for key,value in sort_score:
             print("{0:8s} {1:<8d} {2:<8d}".format(key,total_count[key],value))
         print("{0:8s} {1:<8d} {2:<8d}".format("total",sum(total_count.values()),sum(total_score.values())))
-
-        #print(total_score)
-        #print(total_count)
         print(time.time()-start_time)
 
 
 def findIndex(nums,target):
     compared_num = nums[0]
     index = 0
-    while target >= compared_num:
+    while target > compared_num:
         index+=1
         compared_num = nums[index]
     return index-1
@@ -161,45 +129,15 @@ def findIndex(nums,target):
 
 def countScore(word_dict, melbGrid, tweet_pos, tweet_text,grid_score,grid_count):
     x_axis, y_axis, x_name, y_name = melbGrid
-    #print(tweet_pos)
     invalid_area = ['A5','B5','D1','D2']
-    punctuation = [",", ".", "\'", "\"", "?", "!"]
-    if tweet_pos[0]>= x_axis[0] and tweet_pos[0] <= x_axis[-1] and tweet_pos[1]>= y_axis[0] and tweet_pos[1] <= y_axis[-1]:
+    if tweet_pos[0]> x_axis[0] and tweet_pos[0] <= x_axis[-1] and tweet_pos[1]> y_axis[0] and tweet_pos[1] <= y_axis[-1]:
         x = findIndex(x_axis, tweet_pos[0])
         y = findIndex(y_axis, tweet_pos[1])
         area = y_name[y] + x_name[x]
-        #print(area, y, x, tweet_pos)
         if area in invalid_area:
             return
-        # if area not in grid_count:
-        #     grid_count[area] = 1
-        # else:
-        #     grid_count[area] += 1
-        # if area not in grid_score:
-        #     grid_score[area] = 0
         grid_count[area] += 1
         
-        # print(text_line)
-        #score = 0
-
-        # 1
-        # for text in text_line:
-        #     text = text.lower()
-        #     if len(text) > 0 and text[-1] in punctuation:
-        #         text = text[:-1]
-        #     if text in word_dict:
-        #         grid_score[area] += int(word_dict[text])
-        #         #score += int(word_dict[text])
-
-        #2
-        # text_line = tweet_text.strip().split(' ')
-        # for token in text_line:
-        #     token = token.lower()
-        #     token = re.sub(r'([\?\!\.\,\'\"])+$', "", token)
-        #     if token in word_dict:
-        #         grid_score[area] += int(word_dict[token])
-
-        #3
         text_line = re.findall(r'\S*\b(?:can\'t stand|cashing in|cool stuff|does not work|dont like|fed up|green wash|green washing|messing up|no fun|not good|not working|right direction|screwed up|some kind)\b|\S+', tweet_text.lower())
         for token in text_line:
             res = re.split(r'(?![can\'t stand])[.,?!\'\"]+', token)
@@ -208,13 +146,6 @@ def countScore(word_dict, melbGrid, tweet_pos, tweet_text,grid_score,grid_count)
                     grid_score[area] += int(word_dict[x])
 
     return grid_score
-
-
-
-
-
-
-
 
 
 '''
