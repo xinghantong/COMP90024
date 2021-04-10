@@ -17,7 +17,7 @@ def main(argv):
         word_dict[word_info[0]] = word_info[1]
     return word_dict
 
-
+#load and parse melbGrid file
 def generateMelbGrid(argv):
     melb_grid = open(argv)
     melb_grid_json = json.load(melb_grid)
@@ -37,6 +37,7 @@ def generateMelbGrid(argv):
             y_axis.append(f["properties"]["ymax"])
     x_axis.sort()
     y_axis.sort()
+    #slightlt move the min x_ais and y_axis to consider the edge cases, which helps to locate the tweets
     x_axis[0] -= 1e-8
     y_axis[0] -= 1e-8
 
@@ -53,6 +54,7 @@ def readTwitterFile(argv,grid,word_dict):
     grid_score = {}
     grid_count = {}
 
+    #initialise grid_count and grid_score
     x_axis, y_axis, x_name, y_name = grid
     for x in x_name:
         for y in y_name:
@@ -63,15 +65,18 @@ def readTwitterFile(argv,grid,word_dict):
             del grid_count[key]
             del grid_score[key]
 
+    #each process open and read tweet file line by line
     with open(argv, encoding='utf-8') as tweet_file:
         basic_info = tweet_file.readline()
         basic_info = basic_info[:-10] + '}'
         basic_info_json = json.loads(basic_info)
         
+        #skip first several tweets by process's rank
         for i in range(rank):
             next(tweet_file)
         while 1:
             try:
+                #match the coordinates and text in each tweet using regex
                 line = tweet_file.readline()
                 m = re.search('"coordinates":\[([\d.-]+),([\d.-]+)\]', line)                
                 tweet_pos = [float(m.group(1)),float(m.group(2))]
@@ -79,6 +84,7 @@ def readTwitterFile(argv,grid,word_dict):
                 tweet_text = s.group(1)
                 countScore(word_dict, gird, tweet_pos, tweet_text, grid_score,grid_count)
                 
+                #each process will read one line every size-1 lines
                 for i in range(size-1):
                     try:
                         next(tweet_file)
@@ -88,11 +94,12 @@ def readTwitterFile(argv,grid,word_dict):
             except:
                 break
 
-    print(test[rank])            
-    print(numth,"Process:", rank)
+   
+    #gather generic object from each process to root by using gather
     grid_score = comm.gather(grid_score, root=0)
     grid_count = comm.gather(grid_count,root=0)
 
+    #show result in process 0
     if rank == 0:
         total_score = {}
         for score in grid_score:
@@ -117,7 +124,8 @@ def readTwitterFile(argv,grid,word_dict):
         print("{0:8s} {1:<8d} {2:<8d}".format("total",sum(total_count.values()),sum(total_score.values())))
         print(time.time()-start_time)
 
-
+#locate the index of x_ais and y_ais, note that target is strictly larger than the border(not equal),
+#so the edge cases will locate to the grid on the left and below.
 def findIndex(nums,target):
     compared_num = nums[0]
     index = 0
@@ -126,21 +134,26 @@ def findIndex(nums,target):
         compared_num = nums[index]
     return index-1
 
-
+#calculate grid_count and grid_score
 def countScore(word_dict, melbGrid, tweet_pos, tweet_text,grid_score,grid_count):
     x_axis, y_axis, x_name, y_name = melbGrid
     invalid_area = ['A5','B5','D1','D2']
+    #the coordinate is strictly larger than its left bottom border, smaller or equals to its right top border
     if tweet_pos[0]> x_axis[0] and tweet_pos[0] <= x_axis[-1] and tweet_pos[1]> y_axis[0] and tweet_pos[1] <= y_axis[-1]:
         x = findIndex(x_axis, tweet_pos[0])
         y = findIndex(y_axis, tweet_pos[1])
+        #find the cell's id
         area = y_name[y] + x_name[x]
+        #return if invalid area, not need to count
         if area in invalid_area:
             return
         grid_count[area] += 1
         
+        #split the textline into words by whitespace characters using regex, all specical cases in AFINN file are excluded.
         text_line = re.findall(r'\S*\b(?:can\'t stand|cashing in|cool stuff|does not work|dont like|fed up|green wash|green washing|messing up|no fun|not good|not working|right direction|screwed up|some kind)\b|\S+', tweet_text.lower())
         for token in text_line:
-            res = re.split(r'(?![can\'t stand])[.,?!\'\"]+', token)
+            #split by given punctuations
+            res = re.split(r'[.,?!\'\"]+', token)
             for x in res:
                 if x and x in word_dict:
                     grid_score[area] += int(word_dict[x])
